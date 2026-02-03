@@ -121,6 +121,22 @@ export function applyServiceCall(
         if (service === "alarm_arm_home") next = updateEntity(next, eid, { state: "armed_home" });
         else if (service === "alarm_disarm") next = updateEntity(next, eid, { state: "disarmed" });
         break;
+      case "media_player":
+        if (service === "media_play_pause") {
+          const newState = entity.state === "playing" ? "paused" : "playing";
+          next = updateEntity(next, eid, { state: newState });
+        } else if (service === "media_play") next = updateEntity(next, eid, { state: "playing" });
+        else if (service === "media_pause") next = updateEntity(next, eid, { state: "paused" });
+        break;
+      case "humidifier":
+        if (service === "turn_on") next = updateEntity(next, eid, { state: "on" });
+        else if (service === "turn_off") next = updateEntity(next, eid, { state: "off" });
+        else if (service === "set_humidity") {
+          next = updateEntity(next, eid, {
+            attributes: { ...entity.attributes, humidity: data.humidity },
+          });
+        }
+        break;
       default:
         break;
     }

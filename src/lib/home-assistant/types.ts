@@ -14,7 +14,9 @@ export type HADomain =
   | "cover"
   | "fan"
   | "alarm_control_panel"
-  | "camera";
+  | "camera"
+  | "media_player"
+  | "humidifier";
 
 export interface HAEntityState {
   entity_id: string;

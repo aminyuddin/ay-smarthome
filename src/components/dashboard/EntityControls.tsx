@@ -6,7 +6,8 @@ import type { DashboardDevice } from "@/lib/home-assistant/entity-mapper";
 import { ToggleSwitch } from "@/components/controls/ToggleSwitch";
 import { SliderControl } from "@/components/controls/SliderControl";
 import { ColorPicker } from "@/components/controls/ColorPicker";
-import { Lock, Unlock, Shield, ShieldOff } from "lucide-react";
+import { CameraPreview } from "@/components/dashboard/CameraPreview";
+import { Lock, Unlock, Shield, ShieldOff, Play, Pause } from "lucide-react";
 
 const TOOLTIP = "Controlled via Home Assistant";
 
@@ -34,6 +35,17 @@ function formatRelativeTime(iso?: string): string | null {
   return `${diffD} d ago`;
 }
 
+/** Detect ISO date/time string (e.g. from sun/date sensors) and format in local time */
+function formatSensorValueAsLocalTime(value: string): string | null {
+  if (typeof value !== "string" || !value.trim()) return null;
+  const d = new Date(value.trim());
+  if (Number.isNaN(d.getTime())) return null;
+  return d.toLocaleString(undefined, {
+    dateStyle: "medium",
+    timeStyle: "short",
+  });
+}
+
 function hexFromRgb(rgb: number[] | undefined): string {
   if (!rgb || rgb.length < 3) return "#ffffff";
   return (
@@ -52,7 +64,7 @@ function rgbFromHex(hex: string): number[] {
 }
 
 export function EntityControls({ device, entityId, allEntityIds }: EntityControlsProps) {
-  const { getEntity, callService } = useHomeAssistant();
+  const { getEntity, callService, config, connectionStatus } = useHomeAssistant();
   const ids = allEntityIds && allEntityIds.length > 0 ? allEntityIds : [entityId];
   const entity = getEntity(entityId);
   if (!entity) return <p className="text-sm text-neutral-500">No entity state</p>;
@@ -156,11 +168,13 @@ export function EntityControls({ device, entityId, allEntityIds }: EntityControl
   if (domain === "sensor") {
     const unit = (attrs.unit_of_measurement as string) ?? "";
     const updated = formatRelativeTime(entity.last_changed);
+    const localTime = formatSensorValueAsLocalTime(state);
+    const displayValue = localTime ?? `${state} ${unit}`.trim();
     return (
       <div className="text-sm">
         <span className="text-neutral-500">Value: </span>
-        <span className="font-medium">
-          {state} {unit}
+        <span className="font-medium" title={localTime ? undefined : state}>
+          {displayValue}
         </span>
         {updated && (
           <p className="mt-0.5 text-[11px] text-neutral-400">Updated {updated}</p>
@@ -276,6 +290,55 @@ export function EntityControls({ device, entityId, allEntityIds }: EntityControl
     );
   }
 
+  if (domain === "humidifier") {
+    const on = state === "on";
+    const currentHumidity = (attrs.current_humidity as number) ?? null;
+    const targetHumidity = (attrs.humidity as number) ?? 50;
+    const mode = (attrs.mode as string) ?? "";
+    return (
+      <div className="space-y-3">
+        <div className="flex items-center justify-between">
+          <span className="text-sm text-neutral-600 dark:text-neutral-400">Power</span>
+          <ToggleSwitch
+            checked={on}
+            onChange={(onOff) =>
+              callService(
+                "humidifier",
+                onOff ? "turn_on" : "turn_off",
+                { entity_id: entityId }
+              )
+            }
+            title={TOOLTIP}
+          />
+        </div>
+        {currentHumidity != null && (
+          <p className="text-sm text-neutral-600 dark:text-neutral-400">
+            Current: <span className="font-medium">{currentHumidity}%</span>
+          </p>
+        )}
+        <SliderControl
+          label="Target humidity"
+          value={targetHumidity}
+          min={0}
+          max={100}
+          unit="%"
+          onChange={(v) =>
+            callService("humidifier", "set_humidity", {
+              entity_id: entityId,
+              humidity: v,
+            })
+          }
+          title={TOOLTIP}
+        />
+        {mode && (
+          <p className="text-[11px] capitalize text-neutral-400 dark:text-neutral-500">
+            Mode: {mode.replace(/_/g, " ")}
+          </p>
+        )}
+      </div>
+    );
+  }
+
   if (domain === "cover") {
     const position = (attrs.current_position as number) ?? 0;
     return (
@@ -369,11 +432,55 @@ export function EntityControls({ device, entityId, allEntityIds }: EntityControl
     );
   }
 
-  if (domain === "camera") {
+  if (domain === "media_player") {
+    const mediaState = state;
+    const isPlaying = mediaState === "playing";
+    const mediaTitle = (attrs.media_title as string) ?? "";
+    const mediaArtist = (attrs.media_artist as string) ?? "";
+    const mediaLine =
+      [mediaTitle, mediaArtist].filter(Boolean).join(" · ") || "—";
     return (
-      <div className="aspect-video w-full rounded bg-neutral-200 dark:bg-neutral-800 flex items-center justify-center text-neutral-500 text-sm">
-        Camera preview placeholder
+      <div className="space-y-2">
+        <p className="truncate text-sm text-neutral-600 dark:text-neutral-400" title={mediaLine}>
+          {mediaLine}
+        </p>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() =>
+              callService("media_player", "media_play_pause", { entity_id: entityId })
+            }
+            className="inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-lg bg-neutral-200 text-neutral-700 hover:bg-neutral-300 dark:bg-neutral-700 dark:text-neutral-200 dark:hover:bg-neutral-600"
+            title={isPlaying ? "Pause" : "Play"}
+          >
+            {isPlaying ? (
+              <Pause className="h-5 w-5" />
+            ) : (
+              <Play className="h-5 w-5" />
+            )}
+          </button>
+          <span className="text-xs capitalize text-neutral-500 dark:text-neutral-400">
+            {mediaState === "playing"
+              ? "Playing"
+              : mediaState === "paused"
+                ? "Paused"
+                : mediaState}
+          </span>
+        </div>
       </div>
+    );
+  }
+
+  if (domain === "camera") {
+    const canStream =
+      connectionStatus === "connected" && config.haUrl?.trim() && config.haToken?.trim();
+    return (
+      <CameraPreview
+        entityId={entityId}
+        haUrl={canStream ? config.haUrl : ""}
+        haToken={canStream ? config.haToken : ""}
+        className="rounded-lg"
+      />
     );
   }
 

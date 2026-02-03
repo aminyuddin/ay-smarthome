@@ -146,6 +146,13 @@ export const initialHAState: HAStateStore = {
     last_changed: ts(),
     last_updated: ts(),
   },
+  [ENTITY_IDS.sensor_sun_next_dawn]: {
+    entity_id: ENTITY_IDS.sensor_sun_next_dawn,
+    state: new Date(Date.now() + 86400000).toISOString().slice(0, 19) + "Z",
+    attributes: { friendly_name: "Sun Next dawn" },
+    last_changed: ts(),
+    last_updated: ts(),
+  },
   [ENTITY_IDS.binary_sensor_door_main]: {
     entity_id: ENTITY_IDS.binary_sensor_door_main,
     state: "off",
@@ -267,6 +274,42 @@ export const initialHAState: HAStateStore = {
     entity_id: ENTITY_IDS.cover_gate_driveway,
     state: "closed",
     attributes: { friendly_name: "Gate" },
+    last_changed: ts(),
+    last_updated: ts(),
+  },
+  // media_player (demo)
+  [ENTITY_IDS.media_player_living_room]: {
+    entity_id: ENTITY_IDS.media_player_living_room,
+    state: "playing",
+    attributes: {
+      friendly_name: "Living Room",
+      media_title: "The Best Fireplace Video (3 hours)",
+      media_artist: "YouTube",
+    },
+    last_changed: ts(),
+    last_updated: ts(),
+  },
+  [ENTITY_IDS.media_player_walkman]: {
+    entity_id: ENTITY_IDS.media_player_walkman,
+    state: "paused",
+    attributes: {
+      friendly_name: "Walkman",
+      media_title: "I Wanna Be A Hippy (Flamman & Abraxas Radio Mix)",
+      media_artist: "Technohead",
+    },
+    last_changed: ts(),
+    last_updated: ts(),
+  },
+  // humidifier (demo)
+  [ENTITY_IDS.humidifier_dehumidifier]: {
+    entity_id: ENTITY_IDS.humidifier_dehumidifier,
+    state: "on",
+    attributes: {
+      friendly_name: "Dehumidifier",
+      current_humidity: 59,
+      humidity: 54,
+      mode: "drying",
+    },
     last_changed: ts(),
     last_updated: ts(),
   },

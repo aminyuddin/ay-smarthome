@@ -51,6 +51,7 @@ export const dashboardDevices: DashboardDevice[] = [
   { id: "temp_sensor", name: "Temperature Sensor", entityIds: [ENTITY_IDS.sensor_living_room_temperature], roomId: "living_room", category: "climate", protocol: "zigbee", gatewayId: GW },
   { id: "energy_meter", name: "Energy Meter", entityIds: [ENTITY_IDS.sensor_energy_meter], roomId: "living_room", category: "power", protocol: "zigbee", gatewayId: GW },
   { id: "bluetooth_presence", name: "Phone Presence", entityIds: [ENTITY_IDS.sensor_bluetooth_presence], roomId: "living_room", category: "security", protocol: "bluetooth", gatewayId: GW_WIFI },
+  { id: "sun_next_dawn", name: "Sun Next dawn", entityIds: [ENTITY_IDS.sensor_sun_next_dawn], roomId: "outdoor", category: "climate", protocol: "zigbee", gatewayId: GW },
   { id: "virtual_switch", name: "Virtual Test Switch", entityIds: [ENTITY_IDS.switch_virtual_test], roomId: "study_room", category: "power", protocol: "virtual", gatewayId: GW_WIFI },
   // Binary sensor
   { id: "door_sensor", name: "Door Sensor", entityIds: [ENTITY_IDS.binary_sensor_door_main], roomId: "living_room", category: "security", protocol: "zigbee", gatewayId: GW },
@@ -76,6 +77,11 @@ export const dashboardDevices: DashboardDevice[] = [
   // Camera (placeholder)
   { id: "camera_indoor", name: "Indoor Camera", entityIds: [ENTITY_IDS.camera_indoor_living], roomId: "living_room", category: "security", protocol: "wifi", gatewayId: GW_WIFI },
   { id: "camera_outdoor", name: "Outdoor Camera", entityIds: [ENTITY_IDS.camera_outdoor_front], roomId: "outdoor", category: "security", protocol: "wifi", gatewayId: GW_WIFI },
+  // Media player (demo)
+  { id: "living_room_player", name: "Living Room", entityIds: [ENTITY_IDS.media_player_living_room], roomId: "living_room", category: "power", protocol: "wifi", gatewayId: GW_WIFI },
+  { id: "walkman", name: "Walkman", entityIds: [ENTITY_IDS.media_player_walkman], roomId: "living_room", category: "power", protocol: "wifi", gatewayId: GW_WIFI },
+  // Humidifier (demo)
+  { id: "dehumidifier", name: "Dehumidifier", entityIds: [ENTITY_IDS.humidifier_dehumidifier], roomId: "bathroom", category: "climate", protocol: "wifi", gatewayId: GW_WIFI },
 ];
 
 export function getDashboardDeviceByEntityId(entityId: string): DashboardDevice | undefined {
@@ -84,4 +90,84 @@ export function getDashboardDeviceByEntityId(entityId: string): DashboardDevice 
 
 export function getPrimaryEntityId(device: DashboardDevice): string {
   return device.entityIds[0];
+}
+
+/** Domains we can render as dashboard cards (EntityControls supports these) */
+const RENDERABLE_DOMAINS = new Set<string>([
+  "light",
+  "switch",
+  "sensor",
+  "binary_sensor",
+  "lock",
+  "climate",
+  "cover",
+  "fan",
+  "alarm_control_panel",
+  "camera",
+  "media_player",
+  "humidifier",
+]);
+
+const ROOM_PATTERNS: { pattern: string | RegExp; roomId: string }[] = [
+  { pattern: "living_room", roomId: "living_room" },
+  { pattern: "lounge", roomId: "living_room" },
+  { pattern: "bedroom", roomId: "bedroom" },
+  { pattern: "kitchen", roomId: "kitchen" },
+  { pattern: "bathroom", roomId: "bathroom" },
+  { pattern: "study", roomId: "study_room" },
+  { pattern: "garage", roomId: "garage" },
+  { pattern: "basement", roomId: "basement" },
+  { pattern: /outdoor|garden|porch|gate|driveway/, roomId: "outdoor" },
+];
+
+function inferRoomFromEntityId(entityId: string): string {
+  const objectId = entityId.split(".")[1] ?? "";
+  const lower = objectId.toLowerCase();
+  for (const { pattern, roomId } of ROOM_PATTERNS) {
+    if (typeof pattern === "string" ? lower.includes(pattern) : pattern.test(lower)) {
+      return roomId;
+    }
+  }
+  return "other";
+}
+
+function domainToCategory(domain: string): DashboardDeviceCategory {
+  const map: Record<string, DashboardDeviceCategory> = {
+    light: "lighting",
+    switch: "power",
+    sensor: "climate",
+    binary_sensor: "security",
+    lock: "security",
+    climate: "climate",
+    cover: "curtains",
+    fan: "climate",
+    alarm_control_panel: "security",
+    camera: "security",
+    media_player: "power",
+    humidifier: "climate",
+  };
+  return map[domain] ?? "power";
+}
+
+/** Build dashboard devices from real HA entity state (when connected). Makes the dashboard dynamic. */
+export function entitiesToDashboardDevices(entities: Record<string, { entity_id: string; attributes?: Record<string, unknown> }>): DashboardDevice[] {
+  const list: DashboardDevice[] = [];
+  for (const entityId of Object.keys(entities)) {
+    const domain = entityId.split(".")[0];
+    if (!RENDERABLE_DOMAINS.has(domain)) continue;
+    const entity = entities[entityId];
+    if (!entity) continue;
+    const attrs = entity.attributes ?? {};
+    const friendlyName = (attrs.friendly_name as string) ?? entityId;
+    list.push({
+      id: entityId.replace(/\./g, "_"),
+      name: friendlyName,
+      entityIds: [entityId],
+      roomId: inferRoomFromEntityId(entityId),
+      category: domainToCategory(domain),
+      protocol: "wifi",
+      gatewayId: "gw_ha",
+    });
+  }
+  return list;
 }

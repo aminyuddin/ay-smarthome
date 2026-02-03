@@ -5,6 +5,9 @@ import { useHomeAssistant } from "@/lib/context/HomeAssistantContext";
 import { DeviceCard } from "@/components/dashboard/DeviceCard";
 import type { DashboardDeviceCategory } from "@/lib/home-assistant/entity-mapper";
 import { FilterButtons } from "@/components/ui/FilterButtons";
+import { DeviceSearchInput } from "@/components/ui/DeviceSearchInput";
+import { filterDevicesBySearch } from "@/lib/device-search";
+import { rooms } from "@/lib/data/rooms";
 import { Cpu } from "lucide-react";
 
 const CATEGORY_LABELS: Record<DashboardDeviceCategory, string> = {
@@ -35,6 +38,7 @@ const CATEGORY_OPTIONS = [
 export default function DevicesPage() {
   const { getDevicesByCategory } = useHomeAssistant();
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
+  const [search, setSearch] = useState("");
 
   const categoriesToShow: DashboardDeviceCategory[] =
     categoryFilter === "all"
@@ -43,28 +47,39 @@ export default function DevicesPage() {
 
   return (
     <div>
-      <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex items-center gap-3">
-          <Cpu className="h-8 w-8 text-emerald-600" />
-          <div>
-            <h1 className="text-2xl font-bold text-neutral-900 dark:text-neutral-100">
-              Devices
-            </h1>
-            <p className="text-sm text-neutral-500">
-              By category · Home Assistant entities
-            </p>
+      <div className="mb-6 flex flex-col gap-4">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-center gap-3">
+            <Cpu className="h-8 w-8 shrink-0 text-emerald-600" />
+            <div className="min-w-0">
+              <h1 className="text-2xl font-bold text-neutral-900 dark:text-neutral-100">
+                Devices
+              </h1>
+              <p className="text-sm text-neutral-500">
+                By category · Home Assistant entities
+              </p>
+            </div>
           </div>
+          <FilterButtons
+            options={CATEGORY_OPTIONS}
+            value={categoryFilter}
+            onChange={setCategoryFilter}
+            label="Category"
+          />
         </div>
-        <FilterButtons
-          options={CATEGORY_OPTIONS}
-          value={categoryFilter}
-          onChange={setCategoryFilter}
-          label="Category"
+        <DeviceSearchInput
+          value={search}
+          onChange={setSearch}
+          className="w-full sm:w-72"
         />
       </div>
       <div className="space-y-10">
         {categoriesToShow.map((category) => {
-          const devices = getDevicesByCategory(category);
+          const devices = filterDevicesBySearch(
+            getDevicesByCategory(category),
+            search,
+            rooms
+          );
           if (devices.length === 0) return null;
           return (
             <section key={category}>

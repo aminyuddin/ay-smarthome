@@ -28,6 +28,7 @@ export const ENTITY_IDS = {
   sensor_study_power: "sensor.study_plug_power",
   sensor_energy_meter: "sensor.energy_meter_kwh",
   sensor_bluetooth_presence: "sensor.bluetooth_presence",
+  sensor_sun_next_dawn: "sensor.sun_next_dawn",
   // binary_sensor
   binary_sensor_door_main: "binary_sensor.door_main",
   binary_sensor_window_living: "binary_sensor.window_living",
@@ -53,6 +54,11 @@ export const ENTITY_IDS = {
   camera_outdoor_front: "camera.outdoor_front",
   // gate (as cover)
   cover_gate_driveway: "cover.gate_driveway",
+  // media_player (demo)
+  media_player_living_room: "media_player.living_room",
+  media_player_walkman: "media_player.walkman",
+  // humidifier (demo)
+  humidifier_dehumidifier: "humidifier.dehumidifier",
 } as const;
 
 export function getDomain(entityId: string): HADomain | null {
@@ -68,6 +74,8 @@ export function getDomain(entityId: string): HADomain | null {
     "fan",
     "alarm_control_panel",
     "camera",
+    "media_player",
+    "humidifier",
   ];
   return valid.includes(domain as HADomain) ? (domain as HADomain) : null;
 }

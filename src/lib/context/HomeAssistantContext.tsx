@@ -6,21 +6,37 @@
  * replaces mock-state and service handlers only; this context API stays.
  */
 
-import React, { createContext, useCallback, useContext, useMemo, useState } from "react";
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import type { HAStateStore, HAEntityState } from "@/lib/home-assistant/types";
 import type { HADomain } from "@/lib/home-assistant/types";
 import { initialHAState } from "@/lib/home-assistant/mock-state";
 import { applyServiceCall } from "@/lib/home-assistant/services";
-import { getDomain } from "@/lib/home-assistant/entities";
 import {
-  dashboardDevices,
-  getPrimaryEntityId,
+  dashboardDevices as staticDashboardDevices,
+  entitiesToDashboardDevices,
   type DashboardDevice,
 } from "@/lib/home-assistant/entity-mapper";
+import {
+  connect as realConnect,
+  disconnect as realDisconnect,
+  callService as realCallService,
+  setRealHACallbacks,
+  getConnectionStatus,
+  getLastError,
+  type ConnectionStatus,
+} from "@/lib/home-assistant/real-api";
+import { loadHAConfig, saveHAConfig, clearHAConfig } from "@/lib/home-assistant/config-storage";
 import { gateways } from "@/lib/data/gateways";
 import type { Gateway } from "@/lib/types/gateway";
 import type { Automation } from "@/lib/types/automation";
 import { initialAutomations } from "@/lib/data/automations";
+
+const DEFAULT_HA_URL = "http://homeassistant.local:8123";
+const INITIAL_CONFIG: HAConfig = {
+  haUrl: DEFAULT_HA_URL,
+  haToken: "",
+  haTokenConfigured: false,
+};
 
 interface HAConfig {
   haUrl: string;
@@ -32,7 +48,7 @@ interface HomeAssistantContextValue {
   /** Entity state store (HA single source of truth) */
   entities: HAStateStore;
   getEntity: (entityId: string) => HAEntityState | undefined;
-  /** Simulate HA service call – updates mock state only */
+  /** HA service call – real API when connected, mock when not */
   callService: (
     domain: HADomain,
     service: string,
@@ -47,6 +63,10 @@ interface HomeAssistantContextValue {
   /** Home Assistant connection config (local, editable via Settings) */
   config: HAConfig;
   updateConfig: (config: Partial<HAConfig>) => void;
+  /** Connection status when using real HA */
+  connectionStatus: ConnectionStatus;
+  /** Last connection error (e.g. invalid auth) */
+  connectionError: Error | null;
   /** Automations (Trigger / Condition / Action; stored locally) */
   automations: Automation[];
   addAutomation: (a: Automation) => void;
@@ -59,11 +79,50 @@ const HomeAssistantContext = createContext<HomeAssistantContextValue | null>(nul
 export function HomeAssistantProvider({ children }: { children: React.ReactNode }) {
   const [entities, setEntities] = useState<HAStateStore>(initialHAState);
   const [automations, setAutomations] = useState<Automation[]>(initialAutomations);
-  const [config, setConfig] = useState<HAConfig>({
-    haUrl: "http://homeassistant.local:8123",
-    haToken: "",
-    haTokenConfigured: false,
-  });
+  const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>("disconnected");
+  const [connectionError, setConnectionError] = useState<Error | null>(null);
+  const [config, setConfig] = useState<HAConfig>(INITIAL_CONFIG);
+
+  useEffect(() => {
+    const stored = loadHAConfig();
+    if (stored?.haUrl && stored?.haToken) {
+      setConfig({
+        haUrl: stored.haUrl,
+        haToken: stored.haToken,
+        haTokenConfigured: true,
+      });
+    }
+  }, []);
+
+  useEffect(() => {
+    setRealHACallbacks({
+      onState: setEntities,
+      onStatus: (s, err) => {
+        setConnectionStatus(s);
+        setConnectionError(err);
+      },
+    });
+    return () => {
+      setRealHACallbacks({});
+    };
+  }, []);
+
+  useEffect(() => {
+    const { haUrl, haToken, haTokenConfigured } = config;
+    if (haTokenConfigured && haUrl?.trim() && haToken?.trim()) {
+      realConnect(haUrl, haToken).catch(() => {
+        setConnectionStatus(getConnectionStatus());
+        setConnectionError(getLastError());
+      });
+      return () => {
+        realDisconnect();
+      };
+    }
+    realDisconnect();
+    setEntities(initialHAState);
+    setConnectionStatus("disconnected");
+    setConnectionError(null);
+  }, [config.haUrl, config.haToken, config.haTokenConfigured]);
 
   const getEntity = useCallback(
     (entityId: string) => entities[entityId],
@@ -71,25 +130,40 @@ export function HomeAssistantProvider({ children }: { children: React.ReactNode 
   );
 
   const callService = useCallback(
-    (
+    async (
       domain: HADomain,
       service: string,
       data: Record<string, unknown> & { entity_id: string | string[] }
     ) => {
+      if (connectionStatus === "connected") {
+        try {
+          await realCallService(domain, service, data);
+        } catch {
+          // Real API error; state will update via WebSocket when HA applies the change
+        }
+        return;
+      }
       setEntities((prev) => applyServiceCall(prev, domain, service, data));
     },
-    []
+    [connectionStatus]
   );
+
+  const dashboardDevices = useMemo(() => {
+    if (connectionStatus === "connected" && Object.keys(entities).length > 0) {
+      return entitiesToDashboardDevices(entities);
+    }
+    return staticDashboardDevices;
+  }, [connectionStatus, entities]);
 
   const getDevicesByRoom = useCallback(
     (roomId: string) => dashboardDevices.filter((d) => d.roomId === roomId),
-    []
+    [dashboardDevices]
   );
 
   const getDevicesByCategory = useCallback(
     (category: DashboardDevice["category"]) =>
       dashboardDevices.filter((d) => d.category === category),
-    []
+    [dashboardDevices]
   );
 
   const getGateway = useCallback(
@@ -112,7 +186,21 @@ export function HomeAssistantProvider({ children }: { children: React.ReactNode 
   }, []);
 
   const updateConfig = useCallback((partial: Partial<HAConfig>) => {
-    setConfig((prev) => ({ ...prev, ...partial, haTokenConfigured: !!(partial.haToken ?? prev.haToken) }));
+    setConfig((prev) => {
+      const next = {
+        ...prev,
+        ...partial,
+        haTokenConfigured: !!(partial.haToken ?? prev.haToken),
+      };
+      const url = next.haUrl?.trim();
+      const token = next.haToken?.trim();
+      if (url && token) {
+        saveHAConfig({ haUrl: url, haToken: token });
+      } else {
+        clearHAConfig();
+      }
+      return next;
+    });
   }, []);
 
   const value = useMemo(
@@ -131,11 +219,14 @@ export function HomeAssistantProvider({ children }: { children: React.ReactNode 
       removeAutomation,
       config,
       updateConfig,
+      connectionStatus,
+      connectionError,
     }),
     [
       entities,
       getEntity,
       callService,
+      dashboardDevices,
       getDevicesByRoom,
       getDevicesByCategory,
       getGateway,
@@ -145,6 +236,8 @@ export function HomeAssistantProvider({ children }: { children: React.ReactNode 
       removeAutomation,
       config,
       updateConfig,
+      connectionStatus,
+      connectionError,
     ]
   );
 

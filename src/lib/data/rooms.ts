@@ -7,5 +7,7 @@ export const rooms: Room[] = [
   { id: "bathroom", name: "Bathroom" },
   { id: "study_room", name: "Study Room" },
   { id: "garage", name: "Garage" },
+  { id: "basement", name: "Basement" },
   { id: "outdoor", name: "Outdoor / Garden" },
+  { id: "other", name: "Other" },
 ];
