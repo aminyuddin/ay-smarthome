@@ -1,8 +1,10 @@
 "use client";
 
+import { useState } from "react";
 import { useHomeAssistant } from "@/lib/context/HomeAssistantContext";
 import { DeviceCard } from "@/components/dashboard/DeviceCard";
 import type { DashboardDeviceCategory } from "@/lib/home-assistant/entity-mapper";
+import { FilterButtons } from "@/components/ui/FilterButtons";
 import { Cpu } from "lucide-react";
 
 const CATEGORY_LABELS: Record<DashboardDeviceCategory, string> = {
@@ -25,24 +27,43 @@ const CATEGORY_ORDER: DashboardDeviceCategory[] = [
   "outdoor",
 ];
 
+const CATEGORY_OPTIONS = [
+  { value: "all", label: "All" },
+  ...CATEGORY_ORDER.map((c) => ({ value: c, label: CATEGORY_LABELS[c] })),
+];
+
 export default function DevicesPage() {
   const { getDevicesByCategory } = useHomeAssistant();
+  const [categoryFilter, setCategoryFilter] = useState<string>("all");
+
+  const categoriesToShow: DashboardDeviceCategory[] =
+    categoryFilter === "all"
+      ? CATEGORY_ORDER
+      : CATEGORY_ORDER.filter((c) => c === categoryFilter);
 
   return (
     <div>
-      <div className="mb-8 flex items-center gap-3">
-        <Cpu className="h-8 w-8 text-emerald-600" />
-        <div>
-          <h1 className="text-2xl font-bold text-neutral-900 dark:text-neutral-100">
-            Devices
-          </h1>
-          <p className="text-sm text-neutral-500">
-            By category · Home Assistant entities
-          </p>
+      <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex items-center gap-3">
+          <Cpu className="h-8 w-8 text-emerald-600" />
+          <div>
+            <h1 className="text-2xl font-bold text-neutral-900 dark:text-neutral-100">
+              Devices
+            </h1>
+            <p className="text-sm text-neutral-500">
+              By category · Home Assistant entities
+            </p>
+          </div>
         </div>
+        <FilterButtons
+          options={CATEGORY_OPTIONS}
+          value={categoryFilter}
+          onChange={setCategoryFilter}
+          label="Category"
+        />
       </div>
       <div className="space-y-10">
-        {CATEGORY_ORDER.map((category) => {
+        {categoriesToShow.map((category) => {
           const devices = getDevicesByCategory(category);
           if (devices.length === 0) return null;
           return (
