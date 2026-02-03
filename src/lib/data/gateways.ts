@@ -22,7 +22,7 @@ export const gateways: Gateway[] = [
     id: "gw_zigbee_2",
     name: "Zigbee Hub (ZHA)",
     type: "ZHA",
-    status: "Not Connected",
+    status: "Disconnected",
     coordinatorDetected: false,
     devicesPaired: 0,
     protocol: "zigbee",

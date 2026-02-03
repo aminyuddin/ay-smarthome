@@ -14,7 +14,7 @@ export type GatewayType =
   | "BluetoothProxy"
   | "VirtualHub";
 
-export type GatewayStatus = "Not Connected" | "Connected" | "Degraded" | "Error";
+export type GatewayStatus = "Disconnected" | "Connected" | "Degraded" | "Error";
 
 export interface Gateway {
   id: string;
