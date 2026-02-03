@@ -31,91 +31,109 @@ export function UsageChart({ data, peakKwh = 2 }: UsageChartProps) {
   const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
   const totalKwh = data.reduce((sum, d) => sum + d.kwh, 0);
   const avgKwh = data.length ? totalKwh / data.length : 0;
-  const chartHeightPx = 200;
+  const chartHeightPx = 280;
 
   return (
-    <div className="rounded-xl border border-neutral-200 bg-white p-4 shadow-sm dark:border-neutral-800 dark:bg-neutral-900">
-      <h3 className="mb-4 font-semibold text-neutral-800 dark:text-neutral-200">
-        Daily usage (kWh)
-      </h3>
-      <div className="flex">
-        {/* Y-axis */}
-        <div
-          className="flex flex-col justify-between pr-2 text-right"
-          style={{ height: chartHeightPx, minWidth: 28 }}
-        >
-          {ticks.slice().reverse().map((tick) => (
-            <span
-              key={tick}
-              className="text-[11px] tabular-nums text-neutral-500"
-            >
-              {tick}
-            </span>
-          ))}
+    <div className="flex min-h-0 min-w-0 flex-col rounded-xl border border-neutral-200 bg-white p-4 shadow-sm dark:border-neutral-800 dark:bg-neutral-900">
+      <div className="mb-3 flex shrink-0 flex-wrap items-center justify-between gap-2">
+        <h3 className="font-semibold text-neutral-800 dark:text-neutral-200">
+          Daily usage (kWh)
+        </h3>
+        <div className="flex items-center gap-3 text-[11px] text-neutral-500">
+          <span className="flex items-center gap-1.5">
+            <span className="h-2.5 w-2.5 rounded-sm bg-emerald-500" aria-hidden />
+            Daily total
+          </span>
+          <span className="flex items-center gap-1.5">
+            <span className="h-2.5 w-2.5 rounded-sm bg-amber-500" aria-hidden />
+            High peak (instant)
+          </span>
         </div>
-        <div
-          className="relative flex flex-1 flex-col"
-          style={{ height: chartHeightPx }}
-        >
-          {/* horizontal grid lines */}
-          <div className="pointer-events-none absolute inset-0">
-            {ticks.slice(1).map((tick) => (
-              <div
+      </div>
+      <div className="min-h-0 flex-1">
+        <div className="flex h-full w-full min-h-[280px]">
+          {/* Y-axis */}
+          <div
+            className="flex flex-col justify-between pr-2 text-right"
+            style={{ height: chartHeightPx, minWidth: 28 }}
+          >
+            {ticks.slice().reverse().map((tick) => (
+              <span
                 key={tick}
-                className="absolute left-0 right-0 h-px bg-neutral-100 dark:bg-neutral-800"
-                style={{
-                  bottom: `${(tick / yMax) * 100}%`,
-                }}
-              />
+                className="text-[11px] tabular-nums text-neutral-500"
+              >
+                {tick}
+              </span>
             ))}
           </div>
           <div
-            className="relative z-10 flex flex-1 items-end gap-3 pb-1 pt-1"
+            className="relative flex flex-1 flex-col"
             style={{ height: chartHeightPx }}
           >
-            {data.map((point) => {
-              const date = new Date(point.date);
-              const dayLabel = days[date.getDay()];
-              const heightPct = (point.kwh / yMax) * 100;
-              const barHeightPx = Math.max((point.kwh / yMax) * chartHeightPx, 4);
-              const isPeak = point.peakKwh != null && point.peakKwh >= peakKwh * 0.9;
-              return (
+            {/* horizontal grid lines */}
+            <div className="pointer-events-none absolute inset-0">
+              {ticks.slice(1).map((tick) => (
                 <div
-                  key={point.date}
-                  className="flex flex-1 flex-col items-center gap-1"
-                >
+                  key={tick}
+                  className="absolute left-0 right-0 h-px bg-neutral-100 dark:bg-neutral-800"
+                  style={{
+                    bottom: `${(tick / yMax) * 100}%`,
+                  }}
+                />
+              ))}
+            </div>
+            <div
+              className="relative z-10 flex flex-1 items-end gap-3 pb-1 pt-1"
+              style={{ height: chartHeightPx }}
+            >
+              {data.map((point) => {
+                const date = new Date(point.date);
+                const dayLabel = days[date.getDay()];
+                const barHeightPx = Math.max((point.kwh / yMax) * chartHeightPx, 4);
+                const isPeak = point.peakKwh != null && point.peakKwh >= peakKwh * 0.9;
+                const tooltip = point.peakKwh != null
+                  ? `${point.date} · ${point.kwh.toFixed(1)} kWh total · Peak ${point.peakKwh.toFixed(1)} kWh`
+                  : `${point.date} · ${point.kwh.toFixed(1)} kWh`;
+                return (
                   <div
-                    className="relative w-full flex-1 flex flex-col justify-end"
-                    style={{ minHeight: chartHeightPx }}
+                    key={point.date}
+                    className="group flex flex-1 flex-col items-center gap-1"
                   >
                     <div
-                      className={`w-full rounded-t transition-all ${
-                        isPeak ? "bg-amber-500" : "bg-emerald-500"
-                      }`}
-                      style={{
-                        height: barHeightPx,
-                        minHeight: 4,
-                      }}
-                      title={`${point.date}: ${point.kwh} kWh`}
-                    />
-                    <span
-                      className="absolute left-1/2 -translate-x-1/2 whitespace-nowrap text-[11px] font-medium tabular-nums text-white drop-shadow-[0_0_1px_rgba(0,0,0,0.8)]"
-                      style={{ bottom: barHeightPx - 2 }}
+                      className="relative w-full flex-1 flex flex-col justify-end"
+                      style={{ minHeight: chartHeightPx }}
                     >
-                      {point.kwh.toFixed(1)}
-                    </span>
+                      <div
+                        className={`w-full rounded-t transition-all duration-200 group-hover:opacity-90 group-hover:ring-2 group-hover:ring-neutral-400/50 group-hover:ring-offset-1 dark:group-hover:ring-neutral-500/50 ${
+                          isPeak ? "bg-amber-500" : "bg-emerald-500"
+                        }`}
+                        style={{
+                          height: barHeightPx,
+                          minHeight: 4,
+                        }}
+                        title={tooltip}
+                        role="img"
+                        aria-label={`${dayLabel} ${point.date}: ${point.kwh.toFixed(1)} kWh${point.peakKwh != null ? `, peak ${point.peakKwh.toFixed(1)} kWh` : ""}`}
+                      />
+                      <span
+                        className="absolute left-1/2 -translate-x-1/2 whitespace-nowrap text-[11px] font-medium tabular-nums text-white drop-shadow-[0_0_1px_rgba(0,0,0,0.8)]"
+                        style={{ bottom: barHeightPx - 2 }}
+                      >
+                        {point.kwh.toFixed(1)}
+                      </span>
+                    </div>
+                    <span className="shrink-0 text-xs text-neutral-500">{dayLabel}</span>
                   </div>
-                  <span className="shrink-0 text-xs text-neutral-500">{dayLabel}</span>
-                </div>
-              );
-            })}
+                );
+              })}
+            </div>
           </div>
         </div>
       </div>
-      <p className="mt-2 text-xs text-neutral-500">
-        Peak demand in this period: {peakKwh.toFixed(1)} kWh · Average{" "}
-        {avgKwh.toFixed(1)} kWh/day
-      </p>
+      <div className="mt-3 flex shrink-0 flex-wrap gap-x-4 gap-y-1 text-xs text-neutral-500">
+        <span>Average <strong className="font-semibold text-neutral-700 dark:text-neutral-300">{avgKwh.toFixed(1)} kWh/day</strong></span>
+        <span>Peak instant <strong className="font-semibold text-neutral-700 dark:text-neutral-300">{peakKwh.toFixed(1)} kWh</strong></span>
+      </div>
     </div>
   );
 }

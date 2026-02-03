@@ -28,21 +28,16 @@ npm run dev
 
 Open [http://localhost:3000](http://localhost:3000).
 
-## Deploy to Firebase Hosting
+## Deploy to Vercel
 
-The app is built as a **static export** (`output: "export"`), so it can be served from Firebase Hosting without a Node.js server.
+1. **Push the repo to GitHub** (or GitLab/Bitbucket).
+2. Go to [vercel.com](https://vercel.com) → **Add New Project** → import your repo.
+3. **Framework Preset:** Next.js (auto-detected). Leave **Build Command** `next build` and **Output Directory** empty.
+4. **Deploy.** Vercel will build and host the app. Clean URLs (`/security`, `/devices`, etc.) and refresh work without any rewrites.
 
-1. **Install Firebase CLI** (if needed): `npm install -g firebase-tools`
-2. **Log in**: `firebase login`
-3. **Set your project**: Edit `.firebaserc` and replace `your-firebase-project-id` with your Firebase project ID, or run `firebase use <project-id>`.
-4. **Build and deploy**:
+Your site will be at `https://<project-name>.vercel.app`. Add a custom domain in the Vercel project settings if you like.
 
-```bash
-npm run build
-firebase deploy
-```
-
-The site will be live at `https://<project-id>.web.app` (or your custom domain).
+**Sharing (OG / Twitter):** Set `NEXT_PUBLIC_APP_URL` in Vercel → Project → Settings → Environment Variables to your production URL (e.g. `https://your-app.vercel.app`) so Open Graph and Twitter card links use the correct domain. The app uses `app/icon.png`, `app/favicon.ico`, and a generated `opengraph-image` (1200×630) for social previews.
 
 ## Folder structure
 
