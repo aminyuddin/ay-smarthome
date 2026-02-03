@@ -1,0 +1,71 @@
+"use client";
+
+import { useHomeAssistant } from "@/lib/context/HomeAssistantContext";
+import { GatewayStatus } from "@/components/ui/GatewayStatus";
+import { Settings, Server, Radio, Link2 } from "lucide-react";
+
+export default function IntegrationsPage() {
+  const { gateways, entities, config } = useHomeAssistant();
+  const entityCount = Object.keys(entities).length;
+
+  return (
+    <div>
+      <div className="mb-8 flex items-center gap-3">
+        <Link2 className="h-8 w-8 text-emerald-600" />
+        <div>
+          <h1 className="text-2xl font-bold text-neutral-900 dark:text-neutral-100">
+            Integrations
+          </h1>
+          <p className="text-sm text-neutral-500">
+            Home Assistant & Zigbee
+          </p>
+        </div>
+      </div>
+
+      {/* Home Assistant */}
+      <section className="mb-10 rounded-xl border border-neutral-200 bg-white p-6 shadow-sm dark:border-neutral-800 dark:bg-neutral-900">
+        <h2 className="mb-4 flex items-center gap-2 text-lg font-semibold">
+          <Server className="h-5 w-5" />
+          Home Assistant
+        </h2>
+        <dl className="grid gap-3 sm:grid-cols-2">
+          <div>
+            <dt className="text-xs font-medium uppercase text-neutral-500">Connection Status</dt>
+            <dd className="font-medium">Configured (local instance)</dd>
+          </div>
+          <div>
+            <dt className="text-xs font-medium uppercase text-neutral-500">API Type</dt>
+            <dd className="font-medium">REST / WebSocket</dd>
+          </div>
+          <div>
+            <dt className="text-xs font-medium uppercase text-neutral-500">URL</dt>
+            <dd className="font-mono text-sm">{config.haUrl}</dd>
+          </div>
+          <div>
+            <dt className="text-xs font-medium uppercase text-neutral-500">Token</dt>
+            <dd className="font-medium">
+              {config.haTokenConfigured ? "Configured" : "Not configured"}
+            </dd>
+          </div>
+          <div>
+            <dt className="text-xs font-medium uppercase text-neutral-500">Entity Count</dt>
+            <dd className="font-medium">{entityCount}</dd>
+          </div>
+        </dl>
+      </section>
+
+      {/* Gateways / protocol bridges */}
+      <section>
+        <h2 className="mb-4 flex items-center gap-2 text-lg font-semibold">
+          <Radio className="h-5 w-5" />
+          Gateways & protocol bridges
+        </h2>
+        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+          {gateways.map((gateway) => (
+            <GatewayStatus key={gateway.id} gateway={gateway} />
+          ))}
+        </div>
+      </section>
+    </div>
+  );
+}
