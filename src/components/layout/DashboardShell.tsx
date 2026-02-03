@@ -15,7 +15,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
       />
       <div className="flex min-h-0 flex-1 flex-col pl-0 lg:pl-56">
         <TopBar onMenuClick={() => setMobileMenuOpen(true)} />
-        <main className="min-h-0 flex-1 overflow-auto p-4 sm:p-6">{children}</main>
+        <main className="min-h-0 min-w-0 flex-1 overflow-auto overflow-x-hidden p-4 sm:p-6">{children}</main>
       </div>
     </div>
   );

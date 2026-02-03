@@ -12,7 +12,8 @@ export type GatewayType =
   | "WifiRouter"
   | "MatterBridge"
   | "BluetoothProxy"
-  | "VirtualHub";
+  | "VirtualHub"
+  | "Other";
 
 export type GatewayStatus = "Disconnected" | "Connected" | "Degraded" | "Error";
 

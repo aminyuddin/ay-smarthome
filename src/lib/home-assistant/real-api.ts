@@ -18,6 +18,8 @@ import {
 } from "home-assistant-js-websocket";
 import type { Connection, HassEntity, HassEntities } from "home-assistant-js-websocket";
 import type { HAStateStore, HAEntityState } from "./types";
+import type { Gateway } from "@/lib/types/gateway";
+import { discoverGateways } from "./gateway-discovery";
 
 /** Map HA WebSocket error codes to user-friendly messages. */
 function messageForHAError(err: unknown): string {
@@ -77,11 +79,14 @@ function entitiesToStore(entities: HassEntities): HAStateStore {
 }
 
 let connection: Connection | null = null;
+let haBaseUrl = "";
+let haToken = "";
 let unsubscribeEntities: (() => void) | null = null;
 let status: ConnectionStatus = "disconnected";
 let lastError: Error | null = null;
 let onStatusChange: ((s: ConnectionStatus, err: Error | null) => void) | null = null;
 let onStateChange: ((store: HAStateStore) => void) | null = null;
+let onGatewaysChange: ((gateways: Gateway[]) => void) | null = null;
 
 export function getConnectionStatus(): ConnectionStatus {
   return status;
@@ -95,10 +100,12 @@ export function setRealHACallbacks(
   opts: {
     onState?: (store: HAStateStore) => void;
     onStatus?: (status: ConnectionStatus, err: Error | null) => void;
+    onGateways?: (gateways: Gateway[]) => void;
   }
 ): void {
   onStateChange = opts.onState ?? null;
   onStatusChange = opts.onStatus ?? null;
+  onGatewaysChange = opts.onGateways ?? null;
 }
 
 function setStatus(s: ConnectionStatus, err: Error | null = null): void {
@@ -116,7 +123,9 @@ export async function connect(haUrl: string, haToken: string): Promise<void> {
   setStatus("connecting", null);
   try {
     const url = haUrl.replace(/\/$/, "");
-    const auth = createLongLivedTokenAuth(url, haToken.trim());
+    haBaseUrl = url;
+    haToken = haToken.trim();
+    const auth = createLongLivedTokenAuth(url, haToken);
     connection = await createConnection({ auth });
     connection.addEventListener("ready", () => setStatus("connected", null));
     connection.addEventListener("disconnected", () => setStatus("disconnected", null));
@@ -128,6 +137,9 @@ export async function connect(haUrl: string, haToken: string): Promise<void> {
       onStateChange?.(store);
     });
     setStatus("connected", null);
+    discoverGateways(connection).then((gateways) => {
+      onGatewaysChange?.(gateways);
+    });
   } catch (err) {
     connection = null;
     unsubscribeEntities = null;
@@ -145,8 +157,19 @@ export function disconnect(): Promise<void> {
     connection.close();
     connection = null;
   }
+  onGatewaysChange?.([]);
+  haBaseUrl = "";
+  haToken = "";
   setStatus("disconnected", null);
   return Promise.resolve();
+}
+
+export function getConnection(): Connection | null {
+  return connection;
+}
+
+export function getHaConfig(): { baseUrl: string; token: string } {
+  return { baseUrl: haBaseUrl, token: haToken };
 }
 
 export async function callService(

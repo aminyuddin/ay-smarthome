@@ -38,7 +38,7 @@ export function DeviceCard({ device }: DeviceCardProps) {
 
   return (
     <article
-      className="rounded-xl border border-neutral-200 bg-white p-4 shadow-sm transition-shadow hover:shadow dark:border-neutral-800 dark:bg-neutral-900"
+      className="min-w-0 rounded-xl border border-neutral-200 bg-white p-4 shadow-sm transition-shadow hover:shadow dark:border-neutral-800 dark:bg-neutral-900"
       title={device.name}
     >
       <div className="mb-3 flex items-start justify-between gap-2">
@@ -63,10 +63,12 @@ export function DeviceCard({ device }: DeviceCardProps) {
       <button
         type="button"
         onClick={() => setShowAdvanced((v) => !v)}
-        className="mb-3 flex w-full items-center justify-between rounded bg-neutral-50 px-2 py-1.5 text-left text-xs text-neutral-500 dark:bg-neutral-800 dark:text-neutral-400"
+        className="mb-3 flex w-full min-w-0 items-center justify-between gap-2 rounded bg-neutral-50 px-2 py-1.5 text-left text-xs text-neutral-500 dark:bg-neutral-800 dark:text-neutral-400"
       >
-        <span className="font-mono">{primaryEntityId}</span>
-        {showAdvanced ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+        <span className="min-w-0 truncate font-mono" title={primaryEntityId}>
+          {primaryEntityId}
+        </span>
+        {showAdvanced ? <ChevronUp className="h-3 w-3 shrink-0" /> : <ChevronDown className="h-3 w-3 shrink-0" />}
       </button>
       {showAdvanced && (
         <div className="mb-3 space-y-1 rounded bg-neutral-50 px-2 py-2 text-xs font-mono text-neutral-500 dark:bg-neutral-800 dark:text-neutral-400">

@@ -18,11 +18,11 @@ export function RoomSection({
   if (devices.length === 0) return null;
 
   return (
-    <section className="mb-8">
+    <section className="mb-8 min-w-0">
       <h2 className="mb-4 text-lg font-semibold text-neutral-800 dark:text-neutral-200">
         {room.name}
       </h2>
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+      <div className="grid min-w-0 grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
         {devices.map((device) => (
           <DeviceCard key={device.id} device={device} />
         ))}

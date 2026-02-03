@@ -8,8 +8,9 @@ import type { Automation } from "@/lib/types/automation";
 import { Zap, Plus } from "lucide-react";
 
 export default function AutomationsPage() {
-  const { automations, removeAutomation } = useHomeAssistant();
+  const { automations, removeAutomation, connectionStatus } = useHomeAssistant();
   const [showEditor, setShowEditor] = useState(false);
+  const fromHA = connectionStatus === "connected";
 
   const handleSave = (_a: Automation) => {
     setShowEditor(false);
@@ -25,7 +26,9 @@ export default function AutomationsPage() {
               Automations
             </h1>
             <p className="text-sm text-neutral-500">
-              Trigger / Condition / Action · HA service calls (stored locally)
+              {fromHA
+                ? "Trigger / Condition / Action · Synced with Home Assistant"
+                : "Trigger / Condition / Action · Stored locally (connect HA in Settings to sync)"}
             </p>
           </div>
         </div>

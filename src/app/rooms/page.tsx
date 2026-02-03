@@ -25,16 +25,16 @@ export default function RoomsPage() {
       : rooms.filter((r) => r.id === roomFilter);
 
   return (
-    <div>
+    <div className="min-w-0">
       <div className="mb-6 flex flex-col gap-4">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex items-center gap-3">
+          <div className="flex min-w-0 flex-1 items-center gap-3">
             <LayoutGrid className="h-8 w-8 shrink-0 text-emerald-600" />
-            <div className="min-w-0">
-              <h1 className="text-2xl font-bold text-neutral-900 dark:text-neutral-100">
+            <div className="min-w-0 flex-1">
+              <h1 className="text-xl font-bold text-neutral-900 dark:text-neutral-100 sm:text-2xl">
                 Rooms
               </h1>
-              <p className="text-sm text-neutral-500">
+              <p className="break-words text-sm text-neutral-500">
                 Devices grouped by room
               </p>
             </div>

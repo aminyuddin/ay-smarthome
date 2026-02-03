@@ -6,7 +6,7 @@
  * replaces mock-state and service handlers only; this context API stays.
  */
 
-import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import type { HAStateStore, HAEntityState } from "@/lib/home-assistant/types";
 import type { HADomain } from "@/lib/home-assistant/types";
 import { initialHAState } from "@/lib/home-assistant/mock-state";
@@ -23,10 +23,14 @@ import {
   setRealHACallbacks,
   getConnectionStatus,
   getLastError,
+  getConnection,
+  getHaConfig,
   type ConnectionStatus,
 } from "@/lib/home-assistant/real-api";
+import { fetchAllAutomationConfigs, createOrUpdateAutomation, deleteAutomation } from "@/lib/home-assistant/automation-api";
+import { haConfigToAutomation, automationToHaConfig, automationConfigIdFromOurId } from "@/lib/home-assistant/automation-mapper";
 import { loadHAConfig, saveHAConfig, clearHAConfig } from "@/lib/home-assistant/config-storage";
-import { gateways } from "@/lib/data/gateways";
+import { gateways as staticGateways } from "@/lib/data/gateways";
 import type { Gateway } from "@/lib/types/gateway";
 import type { Automation } from "@/lib/types/automation";
 import { initialAutomations } from "@/lib/data/automations";
@@ -60,6 +64,8 @@ interface HomeAssistantContextValue {
   getDevicesByCategory: (category: DashboardDevice["category"]) => DashboardDevice[];
   getGateway: (gatewayId: string) => Gateway | undefined;
   gateways: Gateway[];
+  /** True when gateways list is from HA discovery (not sample data) */
+  gatewaysFromHA: boolean;
   /** Home Assistant connection config (local, editable via Settings) */
   config: HAConfig;
   updateConfig: (config: Partial<HAConfig>) => void;
@@ -82,6 +88,8 @@ export function HomeAssistantProvider({ children }: { children: React.ReactNode 
   const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>("disconnected");
   const [connectionError, setConnectionError] = useState<Error | null>(null);
   const [config, setConfig] = useState<HAConfig>(INITIAL_CONFIG);
+  const [discoveredGateways, setDiscoveredGateways] = useState<Gateway[]>([]);
+  const hasLoadedAutomationsRef = useRef(false);
 
   useEffect(() => {
     const stored = loadHAConfig();
@@ -101,6 +109,7 @@ export function HomeAssistantProvider({ children }: { children: React.ReactNode 
         setConnectionStatus(s);
         setConnectionError(err);
       },
+      onGateways: setDiscoveredGateways,
     });
     return () => {
       setRealHACallbacks({});
@@ -120,9 +129,35 @@ export function HomeAssistantProvider({ children }: { children: React.ReactNode 
     }
     realDisconnect();
     setEntities(initialHAState);
+    setAutomations(initialAutomations);
+    setDiscoveredGateways([]);
     setConnectionStatus("disconnected");
     setConnectionError(null);
   }, [config.haUrl, config.haToken, config.haTokenConfigured]);
+
+  const loadAutomationsFromHA = useCallback(async () => {
+    const conn = getConnection();
+    if (!conn) return;
+    const list = await fetchAllAutomationConfigs(conn, entities);
+    const devices = Object.keys(entities).length > 0 ? entitiesToDashboardDevices(entities) : staticDashboardDevices;
+    const mapped: Automation[] = [];
+    for (const { entityId, config } of list) {
+      const a = haConfigToAutomation(entityId, config, devices);
+      if (a) mapped.push(a);
+    }
+    setAutomations(mapped);
+  }, [entities]);
+
+  useEffect(() => {
+    if (connectionStatus !== "connected" || Object.keys(entities).length === 0) return;
+    if (hasLoadedAutomationsRef.current) return;
+    hasLoadedAutomationsRef.current = true;
+    loadAutomationsFromHA();
+  }, [connectionStatus, entities, loadAutomationsFromHA]);
+
+  useEffect(() => {
+    if (connectionStatus !== "connected") hasLoadedAutomationsRef.current = false;
+  }, [connectionStatus]);
 
   const getEntity = useCallback(
     (entityId: string) => entities[entityId],
@@ -166,24 +201,73 @@ export function HomeAssistantProvider({ children }: { children: React.ReactNode 
     [dashboardDevices]
   );
 
+  const gateways = useMemo(() => {
+    if (connectionStatus === "connected" && discoveredGateways.length > 0) {
+      return discoveredGateways;
+    }
+    return staticGateways;
+  }, [connectionStatus, discoveredGateways]);
+
+  const gatewaysFromHA =
+    connectionStatus === "connected" && discoveredGateways.length > 0;
+
   const getGateway = useCallback(
     (gatewayId: string) => gateways.find((g) => g.id === gatewayId),
-    []
+    [gateways]
   );
 
-  const addAutomation = useCallback((a: Automation) => {
-    setAutomations((prev) => [...prev, a]);
-  }, []);
+  const addAutomation = useCallback(
+    async (a: Automation) => {
+      if (connectionStatus === "connected") {
+        try {
+          const { baseUrl, token } = getHaConfig();
+          const devices = Object.keys(entities).length > 0 ? entitiesToDashboardDevices(entities) : staticDashboardDevices;
+          const haConfig = automationToHaConfig(a, devices);
+          const configId = automationConfigIdFromOurId(a.id, a.name);
+          await createOrUpdateAutomation(baseUrl, token, configId, haConfig);
+          hasLoadedAutomationsRef.current = false;
+          await loadAutomationsFromHA();
+        } catch {
+          setAutomations((prev) => [...prev, a]);
+        }
+        return;
+      }
+      setAutomations((prev) => [...prev, a]);
+    },
+    [connectionStatus, entities, loadAutomationsFromHA]
+  );
 
-  const updateAutomation = useCallback((id: string, a: Partial<Automation>) => {
-    setAutomations((prev) =>
-      prev.map((x) => (x.id === id ? { ...x, ...a } : x))
-    );
-  }, []);
+  const updateAutomation = useCallback(
+    (id: string, a: Partial<Automation>) => {
+      setAutomations((prev) =>
+        prev.map((x) => (x.id === id ? { ...x, ...a } : x))
+      );
+      if (connectionStatus === "connected" && a.enabled !== undefined) {
+        const entityId = id.startsWith("automation.") ? id : `automation.${id}`;
+        realCallService("automation", a.enabled ? "turn_on" : "turn_off", { entity_id: entityId }).catch(() => {});
+      }
+    },
+    [connectionStatus]
+  );
 
-  const removeAutomation = useCallback((id: string) => {
-    setAutomations((prev) => prev.filter((x) => x.id !== id));
-  }, []);
+  const removeAutomation = useCallback(
+    async (id: string) => {
+      if (connectionStatus === "connected") {
+        try {
+          const { baseUrl, token } = getHaConfig();
+          const configId = id.startsWith("automation.") ? id.replace("automation.", "") : id;
+          await deleteAutomation(baseUrl, token, configId);
+          hasLoadedAutomationsRef.current = false;
+          await loadAutomationsFromHA();
+        } catch {
+          setAutomations((prev) => prev.filter((x) => x.id !== id));
+        }
+        return;
+      }
+      setAutomations((prev) => prev.filter((x) => x.id !== id));
+    },
+    [connectionStatus, loadAutomationsFromHA]
+  );
 
   const updateConfig = useCallback((partial: Partial<HAConfig>) => {
     setConfig((prev) => {
@@ -213,6 +297,7 @@ export function HomeAssistantProvider({ children }: { children: React.ReactNode 
       getDevicesByCategory,
       getGateway,
       gateways,
+      gatewaysFromHA,
       automations,
       addAutomation,
       updateAutomation,
@@ -230,6 +315,8 @@ export function HomeAssistantProvider({ children }: { children: React.ReactNode 
       getDevicesByRoom,
       getDevicesByCategory,
       getGateway,
+      gateways,
+      gatewaysFromHA,
       automations,
       addAutomation,
       updateAutomation,

@@ -12,6 +12,8 @@ import {
   Fan,
   Shield,
   Video,
+  Music,
+  Droplets,
 } from "lucide-react";
 
 const DOMAIN_ICONS: Record<HADomain, React.ComponentType<{ className?: string }>> = {
@@ -25,6 +27,8 @@ const DOMAIN_ICONS: Record<HADomain, React.ComponentType<{ className?: string }>
   fan: Fan,
   alarm_control_panel: Shield,
   camera: Video,
+  media_player: Music,
+  humidifier: Droplets,
 };
 
 interface DomainIconProps {

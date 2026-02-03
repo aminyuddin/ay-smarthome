@@ -1,8 +1,9 @@
 import type { Gateway } from "@/lib/types/gateway";
 
 /**
- * Gateway / integration endpoints.
- * In a real deployment these would be discovered from Home Assistant / integrations.
+ * Gateway / protocol bridge list (demo only).
+ * Hardcoded for UI demo. In a real deployment these would be discovered
+ * from Home Assistant integrations (ZHA, Zigbee2MQTT, etc.) or config.
  */
 export const gateways: Gateway[] = [
   // Zigbee coordinators
