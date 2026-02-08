@@ -173,11 +173,11 @@ export function EntityControls({ device, entityId, allEntityIds }: EntityControl
     return (
       <div className="text-sm">
         <span className="text-neutral-500">Value: </span>
-        <span className="font-medium" title={localTime ? undefined : state}>
+        <span className="font-medium" title={localTime ? undefined : state} suppressHydrationWarning>
           {displayValue}
         </span>
         {updated && (
-          <p className="mt-0.5 text-[11px] text-neutral-400">Updated {updated}</p>
+          <p className="mt-0.5 text-[11px] text-neutral-400" suppressHydrationWarning>Updated {updated}</p>
         )}
       </div>
     );
@@ -199,7 +199,7 @@ export function EntityControls({ device, entityId, allEntityIds }: EntityControl
           {value ? "Active" : "OK"}
         </span>
         {updated && (
-          <p className="mt-0.5 text-[11px] text-neutral-400">Updated {updated}</p>
+          <p className="mt-0.5 text-[11px] text-neutral-400" suppressHydrationWarning>Updated {updated}</p>
         )}
       </div>
     );

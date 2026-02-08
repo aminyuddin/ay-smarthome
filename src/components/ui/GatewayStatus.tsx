@@ -86,7 +86,7 @@ export function GatewayStatus({ gateway }: GatewayStatusProps) {
         )}
       </dl>
       {gateway.lastSeen && (
-        <p className="mt-3 text-xs text-neutral-400">
+        <p className="mt-3 text-xs text-neutral-400" suppressHydrationWarning>
           Last seen: {new Date(gateway.lastSeen).toLocaleString()}
         </p>
       )}

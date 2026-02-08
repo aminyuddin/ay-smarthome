@@ -6,7 +6,8 @@
 import type { HAStateStore } from "./types";
 import { ENTITY_IDS } from "./entities";
 
-const ts = () => new Date().toISOString();
+/** Fixed timestamp to avoid SSR/client hydration mismatch */
+const ts = () => "2025-01-01T00:00:00.000Z";
 
 export const initialHAState: HAStateStore = {
   [ENTITY_IDS.light_living_room_ceiling]: {

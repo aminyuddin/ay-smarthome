@@ -45,7 +45,7 @@ export function Sidebar({ mobileOpen = false, onMobileClose }: SidebarProps) {
             alt="AY Smart Home"
             width={28}
             height={28}
-            className="shrink-0 rounded"
+            className="h-auto w-auto shrink-0 rounded"
           />
           <span className="font-semibold text-neutral-800 dark:text-neutral-100">
             AY Smart Home

@@ -3,10 +3,12 @@ import type { Device } from "@/lib/types/device";
 const GW_ZIGBEE = "gw_zigbee_1";
 const GW_ZIGBEE_2 = "gw_zigbee_2";
 
-/** Fake lastSeen for demo (ISO string) */
-const lastSeen = () => new Date(Date.now() - Math.random() * 3600000).toISOString();
-/** Fake signal 0–100 for demo */
-const signal = () => Math.floor(50 + Math.random() * 50);
+/** Deterministic fake lastSeen for demo (avoids hydration mismatch) */
+let _lsIdx = 0;
+const lastSeen = () => new Date(1700000000000 - (++_lsIdx * 137 % 3600) * 1000).toISOString();
+/** Deterministic fake signal 0–100 for demo */
+let _sigIdx = 0;
+const signal = () => 50 + (++_sigIdx * 31) % 50;
 
 export const initialDevices: Device[] = [
   // ─── Lighting (Zigbee-first) ───
