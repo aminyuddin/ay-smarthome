@@ -27,7 +27,7 @@ export default function RoomsPage() {
   return (
     <div className="min-w-0">
       <div className="mb-6 flex flex-col gap-4">
-        <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between lg:flex-col lg:items-stretch xl:flex-row xl:items-center xl:justify-between">
           <div className="flex min-w-0 flex-1 items-center gap-3">
             <LayoutGrid className="h-8 w-8 shrink-0 text-emerald-600" />
             <div className="min-w-0 flex-1">
